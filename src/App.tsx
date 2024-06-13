@@ -1,6 +1,66 @@
-import { FastForward, LucideVolume2, PlayIcon, Rewind } from "lucide-react"
+import {
+  FastForward,
+  LucideVolume2,
+  Pause,
+  PlayIcon,
+  Rewind,
+} from "lucide-react"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { playText } from "./utils/speechHelpers"
+import { mingMing } from "./stories/ming-ming"
+import { Sentence } from "./components/Sentence"
+import { getIntervals } from "./utils/getIntervals"
+import { getRunningSums } from "./utils/getRunningSums"
 
 function App() {
+  const [playing, setPlaying] = useState(false)
+  const story = useRef(mingMing)
+  const [currentSentenceIndex, setCurrentSentenceIndex] = useState(0)
+  const currentTextRef = useRef<HTMLParagraphElement>(null)
+  const utterance = useMemo<SpeechSynthesisUtterance>(() => {
+    const u = new SpeechSynthesisUtterance()
+    u.lang = "nl"
+    u.addEventListener("boundary", (e) => {
+      const boundaryEnd = e.charIndex + e.charLength
+      const sentences = u.text.match(/[^\\.!\\?]+[\\.!\\?]+/g)
+      const sentencesLengthsRunningSum = getRunningSums(
+        sentences as RegExpMatchArray
+      )
+      const intervals = getIntervals(sentencesLengthsRunningSum)
+
+      const foundIndex = intervals.findIndex((i) => {
+        const [min, max] = i
+        if (boundaryEnd >= min && boundaryEnd <= max) return true
+        return false
+      })
+
+      if (foundIndex >= 0) {
+        setCurrentSentenceIndex(foundIndex + 1)
+      }
+    })
+    u.addEventListener("end", () => {
+      setPlaying(false)
+    })
+    return u
+  }, [])
+
+  useEffect(() => {
+    speechSynthesis.cancel()
+  }, [])
+
+  function handlePlayButtonClick() {
+    setPlaying((v) => !v)
+    if (!speechSynthesis.paused && speechSynthesis.speaking)
+      return speechSynthesis.pause()
+    if (speechSynthesis.paused && speechSynthesis.speaking)
+      return speechSynthesis.resume()
+    playText({
+      text: currentTextRef.current?.innerText as string,
+      utterance: utterance,
+      speechRate: 1,
+    })
+  }
+
   return (
     <main className="flex flex-col h-screen bg-gradient-to-b from-yellow-600 via-accent-darker to-black text-slate-300">
       <div className="flex items-end justify-center h-1/6 mt-6 mx-4 p-4 rounded-3xl bg-verhalen-photo-cover bg-cover bg-center relative">
@@ -10,28 +70,23 @@ function App() {
           Verhalen Titel
         </h2>
       </div>
-      <div className="flex flex-col h-4/6 mt-4 mx-4 p-6 rounded-3xl overflow-y-auto bg-black bg-opacity-75 text-gray leading-7">
-        <p className="brightness-50">
-          Lorem ipsum dolor sit amet consectetur, adipisicing elit. Iusto magni
-          nostrum optio dolores reiciendis assumenda magnam suscipit maiores,
-          perspiciatis dolore odio numquam, accusantium dignissimos molestiae
-          eos molestias hic fugit quas?
-        </p>
-        <br />
-        <span className="text-accent saturate-200">
-          Lorem ipsum dolor sit amet consectetur, adipisicing elit.{" "}
-        </span>
-        <p className="brightness-50">
-          Laboriosam sunt quos enim quidem dignissimos ab quis qui illo cum
-          dolorem, dolorum, cupiditate id quia et. Maiores, officia eaque
-          eligendi provident quod eos neque minima inventore expedita molestias
-          ex, at deserunt? Aliquid doloribus deserunt non quia alias delectus
-          laboriosam totam maxime, debitis accusantium voluptate omnis
-          necessitatibus tempore, est nemo suscipit placeat culpa a, libero
-          perspiciatis minima! Repellendus impedit id tempora. Neque.
-        </p>
-        <br />
-        <p className="brightness-50">Lorem ipsum dolor sit amet consectetur adipisicing elit. Quasi, nisi et! Minus assumenda animi perspiciatis quas nobis, quos reprehenderit ipsum.</p>
+      <div
+        className="*:mr-1 h-4/6 mt-4 mx-4 p-6 rounded-3xl
+        overflow-y-auto bg-black bg-opacity-75 text-gray leading-7"
+        ref={currentTextRef}
+      >
+        {story.current
+          .match(/[^\\.!\\?]+[\\.!\\?]+/g)
+          ?.map((sentence, index) => {
+            return (
+              <Sentence
+                key={index}
+                highlighted={index === currentSentenceIndex}
+              >
+                {sentence}
+              </Sentence>
+            )
+          })}
       </div>
       <div className="flex justify-between mt-8 mx-8 text-sm text-accent-darker">
         <span>02:07</span>
@@ -45,7 +100,9 @@ function App() {
       <div className="flex items-center justify-between mt-6 mx-8 pb-10">
         <LucideVolume2 />
         <Rewind />
-        <PlayIcon />
+        <div className="hover:cursor-pointer" onClick={handlePlayButtonClick}>
+          {playing ? <Pause /> : <PlayIcon />}
+        </div>
         <FastForward />
         <div className="h-6 w-10 rounded-full bg-black text-slate-100 text-xs text-center p-1">
           1.5x
