@@ -15,11 +15,12 @@ import { getRunningSums } from "./utils/getRunningSums"
 function App() {
   const [playing, setPlaying] = useState(false)
   const story = useRef(mingMing)
-  const [currentSentenceIndex, setCurrentSentenceIndex] = useState(0)
+  const [currentSentenceIndex, setCurrentSentenceIndex] = useState<number>()
   const currentTextRef = useRef<HTMLParagraphElement>(null)
   const utterance = useMemo<SpeechSynthesisUtterance>(() => {
     const u = new SpeechSynthesisUtterance()
     u.lang = "nl"
+
     u.addEventListener("boundary", (e) => {
       const boundaryEnd = e.charIndex + e.charLength
       const sentences = u.text.match(/[^\\.!\\?]+[\\.!\\?]+/g)
@@ -34,13 +35,13 @@ function App() {
         return false
       })
 
-      if (foundIndex >= 0) {
-        setCurrentSentenceIndex(foundIndex + 1)
-      }
+      setCurrentSentenceIndex(foundIndex + 1)
     })
+
     u.addEventListener("end", () => {
       setPlaying(false)
     })
+
     return u
   }, [])
 
