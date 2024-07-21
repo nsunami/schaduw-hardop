@@ -16,7 +16,7 @@ function App() {
   const [playing, setPlaying] = useState(false)
   const story = useRef(mingMing)
   const [currentSentenceIndex, setCurrentSentenceIndex] = useState<number>(0)
-  const [sentences, setSentences] = useState<Array<string>>(
+  const [sentences] = useState<Array<string>>(
     getSentences(story.current) || ["hello"]
   )
   const [currentSentence, setCurrentSentence] = useState<string>(sentences[0])
