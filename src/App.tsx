@@ -38,6 +38,10 @@ function App() {
 
   useEffect(() => {
     speechSynthesis.cancel()
+    if (currentSentence == null) {
+      setPlaying(false)
+      return
+    }
     playText({ text: currentSentence, utterance: utterance, speechRate })
   }, [currentSentence, utterance, speechRate])
 
@@ -47,6 +51,7 @@ function App() {
       return speechSynthesis.pause()
     if (speechSynthesis.paused && speechSynthesis.speaking)
       return speechSynthesis.resume()
+    if (currentSentence == null) return
     playText({
       text: currentSentence,
       utterance: utterance,
