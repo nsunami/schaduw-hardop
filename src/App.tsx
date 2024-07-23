@@ -9,45 +9,41 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { playText } from "./utils/speechHelpers"
 import { mingMing } from "./stories/ming-ming"
 import { Sentence } from "./components/Sentence"
-import { getIntervals } from "./utils/getIntervals"
-import { getRunningSums } from "./utils/getRunningSums"
 
 function App() {
+  const SPEECH_RATE_OPTIONS = [0.5, 0.75, 1, 1.25, 1.5, 2]
+  const [speechRate, setSpeechRate] = useState(1)
   const [playing, setPlaying] = useState(false)
   const story = useRef(mingMing)
-  const [currentSentenceIndex, setCurrentSentenceIndex] = useState<number>()
+  const [currentSentenceIndex, setCurrentSentenceIndex] = useState<number>(0)
+  const [sentences] = useState<Array<string>>(
+    getSentences(story.current) || ["hello"]
+  )
+  const [currentSentence, setCurrentSentence] = useState<string>(sentences[0])
   const currentTextRef = useRef<HTMLParagraphElement>(null)
   const utterance = useMemo<SpeechSynthesisUtterance>(() => {
     const u = new SpeechSynthesisUtterance()
     u.lang = "nl"
-
-    u.addEventListener("boundary", (e) => {
-      const boundaryEnd = e.charIndex + e.charLength
-      const sentences = u.text.match(/[^\\.!\\?]+[\\.!\\?]+/g)
-      const sentencesLengthsRunningSum = getRunningSums(
-        sentences as RegExpMatchArray
-      )
-      const intervals = getIntervals(sentencesLengthsRunningSum)
-
-      const foundIndex = intervals.findIndex((i) => {
-        const [min, max] = i
-        if (boundaryEnd >= min && boundaryEnd <= max) return true
-        return false
-      })
-
-      setCurrentSentenceIndex(foundIndex + 1)
-    })
-
     u.addEventListener("end", () => {
-      setPlaying(false)
+      setCurrentSentence(sentences[currentSentenceIndex + 1])
+      setCurrentSentenceIndex((c) => c + 1)
     })
 
     return u
-  }, [])
+  }, [currentSentenceIndex, sentences])
 
   useEffect(() => {
     speechSynthesis.cancel()
   }, [])
+
+  useEffect(() => {
+    speechSynthesis.cancel()
+    if (currentSentence == null) {
+      setPlaying(false)
+      return
+    }
+    playText({ text: currentSentence, utterance: utterance, speechRate })
+  }, [currentSentence, utterance, speechRate])
 
   function handlePlayButtonClick() {
     setPlaying((v) => !v)
@@ -55,11 +51,34 @@ function App() {
       return speechSynthesis.pause()
     if (speechSynthesis.paused && speechSynthesis.speaking)
       return speechSynthesis.resume()
+    if (currentSentence == null) return
     playText({
-      text: currentTextRef.current?.innerText as string,
+      text: currentSentence,
       utterance: utterance,
-      speechRate: 1,
+      speechRate,
     })
+  }
+
+  function getSentences(text: string) {
+    return text.match(/[^\\.!\\?]+[\\.!\\?]+/g)
+  }
+
+  function handleRewind() {
+    if (currentSentenceIndex >= 1) {
+      speechSynthesis.cancel()
+      setCurrentSentenceIndex((e) => e - 1)
+      setCurrentSentence(sentences[currentSentenceIndex - 1])
+    }
+    setPlaying(true)
+  }
+
+  function handleForward() {
+    if (currentSentenceIndex < sentences.length) {
+      speechSynthesis.cancel()
+      setCurrentSentenceIndex((e) => e + 1)
+      setCurrentSentence(sentences[currentSentenceIndex + 1])
+    }
+    setPlaying(true)
   }
 
   return (
@@ -72,13 +91,12 @@ function App() {
         </h2>
       </div>
       <div
-        className="*:mr-1 h-4/6 mt-4 mx-4 p-6 rounded-3xl
-        overflow-y-auto bg-black bg-opacity-75 text-gray leading-7"
+        className="h-4/6 mt-4 mx-4 p-6 rounded-3xl
+        overflow-y-auto bg-black bg-opacity-75 text-2xl text-gray leading-relaxed"
         ref={currentTextRef}
       >
-        {story.current
-          .match(/[^\\.!\\?]+[\\.!\\?]+/g)
-          ?.map((sentence, index) => {
+        <div className="m-auto max-w-3xl">
+          {getSentences(story.current)?.map((sentence, index) => {
             return (
               <Sentence
                 key={index}
@@ -88,6 +106,7 @@ function App() {
               </Sentence>
             )
           })}
+        </div>
       </div>
       <div className="flex justify-between mt-8 mx-8 text-sm text-accent-darker">
         <span>02:07</span>
@@ -100,14 +119,27 @@ function App() {
       </div>
       <div className="flex items-center justify-between mt-6 mx-8 pb-10">
         <LucideVolume2 />
-        <Rewind />
+        <Rewind className="hover:cursor-pointer" onClick={handleRewind} />
         <div className="hover:cursor-pointer" onClick={handlePlayButtonClick}>
           {playing ? <Pause /> : <PlayIcon />}
         </div>
-        <FastForward />
-        <div className="h-6 w-10 rounded-full bg-black text-slate-100 text-xs text-center p-1">
-          1.5x
-        </div>
+        <FastForward className="hover:cursor-pointer" onClick={handleForward} />
+
+        <select
+          className="h-6 rounded-full bg-black text-slate-100 text-xs text-center p-1 hover:cursor-pointer"
+          name="speed"
+          defaultValue={speechRate}
+          onChange={(e) => {
+            setPlaying(true)
+            setSpeechRate(Number.parseFloat(e.target.value))
+          }}
+        >
+          {SPEECH_RATE_OPTIONS.map((rate) => (
+            <option key={rate} value={rate}>
+              {rate}x
+            </option>
+          ))}
+        </select>
       </div>
     </main>
   )
