@@ -1,5 +1,6 @@
 import {
   FastForward,
+  Github,
   LucideVolume2,
   Pause,
   PlayIcon,
@@ -84,6 +85,15 @@ function App() {
   return (
     <main className="flex flex-col h-screen bg-gradient-to-b from-yellow-600 via-accent-darker to-black text-slate-300">
       <div className="flex items-end justify-center h-1/6 mt-6 mx-4 p-4 rounded-3xl bg-verhalen-photo-cover bg-cover bg-center relative">
+        <div className="absolute mt-2 mr-3 p-2 z-10 right-0 top-0 bg-black bg-opacity-35 rounded-full text-opacity-80">
+          <a
+            href="https://github.com/nsunami/schaduw-hardop"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Github />
+          </a>
+        </div>
         <div className="absolute inset-0 rounded-3xl bg-yellow-500 opacity-30"></div>
         <div className="absolute inset-0 rounded-3xl bg-gradient-to-b from-transparent to-black opacity-100"></div>
         <h2 className="text-2xl text-gray brightness-150 drop-shadow-lg z-10">
